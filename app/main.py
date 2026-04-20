@@ -157,7 +157,12 @@ def update_fps(state: FrameState, now: float) -> float:
 
 
 def print_startup_info(cfg, run_mode: int) -> None:
-    mode_name = "CLASSIC" if run_mode == 0 else "THRESHOLD"
+    mode_names = {
+    0: "CLASSIC + BASE",
+    1: "THRESHOLD + BASE",
+    2: "CLASSIC + FINETUNED",
+    }
+    mode_name = mode_names.get(run_mode, f"UNKNOWN({run_mode})")
 
     print("Run mode:", mode_name, f"({run_mode})")
     print("Stream:", cfg.stream_url)

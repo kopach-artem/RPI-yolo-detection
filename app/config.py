@@ -9,6 +9,7 @@ from pathlib import Path
 class AppConfig:
     stream_url: str
     model_name: str
+    finetuned_model_name: str
 
     save_every: float
     conf: float
@@ -103,6 +104,7 @@ def load_config() -> AppConfig:
     cfg = AppConfig(
         stream_url=os.getenv("STREAM_URL", "http://192.168.0.158:4747/video"),
         model_name=os.getenv("MODEL_NAME", "yolo26s.pt"),
+        finetuned_model_name=os.getenv("FINETUNED_MODEL_NAME", "best.pt"),
 
         save_every=float(os.getenv("SAVE_EVERY", "5")),
         conf=float(os.getenv("CONF", "0.10")),
@@ -153,6 +155,9 @@ def validate_config(cfg: AppConfig) -> None:
 
     if not cfg.model_name:
         raise ValueError("MODEL_NAME must not be empty")
+
+    if not cfg.finetuned_model_name:
+        raise ValueError("FINETUNED_MODEL_NAME must not be empty")
 
     if cfg.idle_frame_stride < 1:
         raise ValueError("IDLE_FRAME_STRIDE must be >= 1")
@@ -214,35 +219,39 @@ def ensure_runtime_dirs(cfg: AppConfig) -> None:
     cfg.json_dir.mkdir(parents=True, exist_ok=True)
     cfg.alerts_dir.mkdir(parents=True, exist_ok=True)
 
+
 def choose_run_mode() -> int:
     """
-    0 = classic mode
-    1 = threshold mode
+    0 = classic + base
+    1 = threshold + base
+    2 = classic + finetuned
 
     Priority:
-    1. RUN_MODE env var, if set to 0 or 1
+    1. RUN_MODE env var, if set to 0, 1 or 2
     2. Interactive prompt
     """
     env_mode = os.getenv("RUN_MODE", "").strip()
-    if env_mode in {"0", "1"}:
+    if env_mode in {"0", "1", "2"}:
         return int(env_mode)
 
     while True:
-        mode = input("Select run mode [0=classic, 1=threshold]: ").strip()
-        if mode in {"0", "1"}:
+        mode = input(
+            "Select run mode [0=classic+base, 1=threshold+base, 2=classic+finetuned]: "
+        ).strip()
+        if mode in {"0", "1", "2"}:
             return int(mode)
-        print("Please enter 0 or 1.")
+        print("Please enter 0, 1 or 2.")
 
 
 def apply_run_mode(cfg: AppConfig, run_mode: int) -> AppConfig:
     """
     Mutates cfg in-place depending on selected run mode.
-    0 = classic project behavior
-    1 = threshold / phase-1 enhanced mode
+    0 = classic + base
+    1 = threshold + base
+    2 = classic + finetuned
     """
     if run_mode == 0:
-        # Classic behavior: simpler inference settings, no class-specific thresholding,
-        # no confirmation requirement for alerts.
+        # Classic behavior + base model
         cfg.conf = 0.25
         cfg.iou = 0.70
         cfg.augment = False
@@ -252,8 +261,19 @@ def apply_run_mode(cfg: AppConfig, run_mode: int) -> AppConfig:
         cfg.use_confirm_for_alerts = False
 
     elif run_mode == 1:
-        # Threshold mode: keep values from .env as-is
+        # Threshold mode + base model: keep values from .env as-is
         pass
+
+    elif run_mode == 2:
+        # Classic behavior + finetuned model
+        cfg.model_name = cfg.finetuned_model_name
+        cfg.conf = 0.25
+        cfg.iou = 0.70
+        cfg.augment = False
+        cfg.imgsz = 320
+        cfg.class_conf_thresholds = {}
+        cfg.confirm_min_frames = 1
+        cfg.use_confirm_for_alerts = False
 
     else:
         raise ValueError(f"Unsupported run mode: {run_mode}")
