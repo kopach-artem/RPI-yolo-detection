@@ -13,9 +13,10 @@ from app.annotate import (
     draw_status_overlay,
     encode_jpeg,
     filter_alert_detections,
+    filter_confirmed_moving_detections,
     filter_moving_detections,
 )
-from app.config import load_config
+from app.config import load_config, choose_run_mode, apply_run_mode
 from app.detector import YoloDetector
 from app.motion import (
     create_motion_subtractor,
@@ -41,6 +42,8 @@ def clone_detections(detections: list[Detection]) -> list[Detection]:
             is_moving=det.is_moving,
             motion_pixels=det.motion_pixels,
             motion_ratio=det.motion_ratio,
+            confirm_hits=det.confirm_hits,
+            is_confirmed=det.is_confirmed,
         )
         for det in detections
     ]
@@ -89,6 +92,56 @@ def mark_all_alerts_as_moving(
     return moving_indexes
 
 
+def prune_confirmation_memory(
+    confirm_memory: dict[str, dict[str, float | int]],
+    now: float,
+    stale_sec: float,
+) -> None:
+    stale_keys = [
+        key
+        for key, value in confirm_memory.items()
+        if (now - float(value["last_seen"])) > stale_sec
+    ]
+    for key in stale_keys:
+        del confirm_memory[key]
+
+
+def update_confirmation_state(
+    detections: list[Detection],
+    alert_labels: set[str],
+    now: float,
+    confirm_memory: dict[str, dict[str, float | int]],
+    min_frames: int,
+    stale_sec: float,
+    cell_size: int,
+) -> None:
+    prune_confirmation_memory(confirm_memory, now, stale_sec)
+
+    for det in detections:
+        det.confirm_hits = 0
+        det.is_confirmed = False
+
+    for det in detections:
+        if det.label not in alert_labels or not det.is_moving:
+            continue
+
+        sig = det.signature(cell_size=cell_size)
+        prev = confirm_memory.get(sig)
+
+        if prev is not None and (now - float(prev["last_seen"])) <= stale_sec:
+            hits = int(prev["hits"]) + 1
+        else:
+            hits = 1
+
+        confirm_memory[sig] = {
+            "hits": hits,
+            "last_seen": now,
+        }
+
+        det.confirm_hits = hits
+        det.is_confirmed = hits >= min_frames
+
+
 def update_fps(state: FrameState, now: float) -> float:
     if state.last_time <= 0:
         state.last_time = now
@@ -103,10 +156,22 @@ def update_fps(state: FrameState, now: float) -> float:
     return state.fps
 
 
-def print_startup_info(cfg) -> None:
+def print_startup_info(cfg, run_mode: int) -> None:
+    mode_name = "CLASSIC" if run_mode == 0 else "THRESHOLD"
+
+    print("Run mode:", mode_name, f"({run_mode})")
     print("Stream:", cfg.stream_url)
     print("Model:", cfg.model_name)
     print("Alert labels:", sorted(cfg.alert_labels))
+    print("Class conf thresholds:", cfg.class_conf_thresholds)
+    print("Base CONF:", cfg.conf)
+    print("IOU:", cfg.iou)
+    print("AUGMENT:", cfg.augment)
+    print("IMGSZ:", cfg.imgsz)
+    print("Confirm min frames:", cfg.confirm_min_frames)
+    print("Confirm stale sec:", cfg.confirm_stale_sec)
+    print("Signature cell size:", cfg.signature_cell_size)
+    print("Use confirm for alerts:", cfg.use_confirm_for_alerts)
     print("Web UI: http://<RASPBERRY_PI_IP>:%d" % cfg.http_port)
     print("Save every:", cfg.save_every, "sec")
     print("Telegram cooldown:", cfg.telegram_cooldown, "sec")
@@ -119,9 +184,11 @@ def print_startup_info(cfg) -> None:
     print("Motion box min ratio:", cfg.motion_box_min_ratio)
     print("Press Ctrl+C to stop")
 
-
 def main() -> None:
     cfg = load_config()
+
+    run_mode = choose_run_mode()
+    cfg = apply_run_mode(cfg, run_mode)
 
     detector = YoloDetector(cfg)
     motion_subtractor = create_motion_subtractor()
@@ -135,8 +202,9 @@ def main() -> None:
 
     state = FrameState(last_time=time.time())
     cache = DetectionCache()
+    confirm_memory: dict[str, dict[str, float | int]] = {}
 
-    print_startup_info(cfg)
+    print_startup_info(cfg, run_mode)
 
     try:
         while True:
@@ -205,20 +273,44 @@ def main() -> None:
                     alert_labels=cfg.alert_labels,
                 )
 
+            update_confirmation_state(
+                detections=detections,
+                alert_labels=cfg.alert_labels,
+                now=now,
+                confirm_memory=confirm_memory,
+                min_frames=cfg.confirm_min_frames,
+                stale_sec=cfg.confirm_stale_sec,
+                cell_size=cfg.signature_cell_size,
+            )
+
             alert_detections = filter_alert_detections(detections, cfg.alert_labels)
             moving_alert_detections = filter_moving_detections(detections, cfg.alert_labels)
+            confirmed_alert_detections = filter_confirmed_moving_detections(
+                detections,
+                cfg.alert_labels,
+            )
+
+            if cfg.use_confirm_for_alerts:
+                effective_alert_detections = confirmed_alert_detections
+            else:
+                effective_alert_detections = moving_alert_detections
 
             alert_counts = build_counts(alert_detections)
             moving_alert_counts = build_counts(moving_alert_detections)
+            confirmed_alert_counts = build_counts(confirmed_alert_detections)
+            effective_alert_counts = build_counts(effective_alert_detections)
 
             alert_seen = len(alert_detections) > 0
             moving_alert_hit = len(moving_alert_detections) > 0
+            confirmed_alert_hit = len(confirmed_alert_detections) > 0
+            effective_alert_hit = len(effective_alert_detections) > 0
 
             annotated = annotate_frame(
                 frame=frame,
                 detections=detections,
                 alert_labels=cfg.alert_labels,
                 moving_indexes=moving_indexes,
+                confirm_min_frames=cfg.confirm_min_frames,
             )
 
             fps = update_fps(state, now)
@@ -233,12 +325,13 @@ def main() -> None:
                 current_stride=current_stride,
                 alert_counts=alert_counts if alert_seen else None,
                 moving_alert_counts=moving_alert_counts if moving_alert_hit else None,
+                confirmed_alert_counts=confirmed_alert_counts if confirmed_alert_hit else None,
             )
 
             jpeg_bytes = encode_jpeg(annotated, cfg.jpeg_quality)
             web.update_frame(jpeg_bytes)
 
-            if moving_alert_hit and (now - state.last_save >= cfg.save_every):
+            if effective_alert_hit and (now - state.last_save >= cfg.save_every):
                 state.last_save = now
                 ts = make_timestamp()
 
@@ -248,14 +341,14 @@ def main() -> None:
                     annotated_frame=annotated,
                     detections=detections,
                     alert_detections=alert_detections,
-                    moving_alert_detections=moving_alert_detections,
+                    moving_alert_detections=effective_alert_detections,
                     motion_found=motion_found,
                     motion_area=motion_area,
                 )
 
-                print(f"[{ts}] saved: {jpg_path.name}, moving_alerts={moving_alert_counts}")
+                print(f"[{ts}] saved: {jpg_path.name}, alert_counts={effective_alert_counts}")
 
-            if moving_alert_hit and can_send_alert(
+            if effective_alert_hit and can_send_alert(
                 now=now,
                 last_alert_time=state.last_alert,
                 cooldown=cfg.telegram_cooldown,
@@ -266,17 +359,18 @@ def main() -> None:
                     cfg=cfg,
                     ts=ts,
                     annotated_frame=annotated,
-                    moving_alert_detections=moving_alert_detections,
+                    moving_alert_detections=effective_alert_detections,
                 )
 
                 caption = build_telegram_caption(
-                    detections=moving_alert_detections,
+                    detections=effective_alert_detections,
                     model_name=cfg.model_name,
                     ts=ts,
                 )
 
-                send_telegram_photo(cfg, alert_path, caption)
-                state.last_alert = now
+                sent = send_telegram_photo(cfg, alert_path, caption)
+                if sent:
+                    state.last_alert = now
 
     except KeyboardInterrupt:
         print("\nStopped by user")

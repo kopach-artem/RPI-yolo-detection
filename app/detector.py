@@ -11,11 +11,17 @@ class YoloDetector:
         self.cfg = cfg
         self.model = YOLO(cfg.model_name)
 
+    def _class_conf_for(self, label: str) -> float:
+        return self.cfg.class_conf_thresholds.get(label, self.cfg.conf)
+
     def predict(self, frame) -> list[Detection]:
         results = self.model.predict(
             source=frame,
             imgsz=self.cfg.imgsz,
             conf=self.cfg.conf,
+            iou=self.cfg.iou,
+            augment=self.cfg.augment,
+            end2end=False,
             device="cpu",
             verbose=False,
         )
@@ -37,12 +43,16 @@ class YoloDetector:
 
         for box, cls_id, conf in zip(xyxy, cls_ids, confs):
             label = result.names[int(cls_id)].lower()
-            x1, y1, x2, y2 = [int(v) for v in box]
+            conf = float(conf)
 
+            if conf < self._class_conf_for(label):
+                continue
+
+            x1, y1, x2, y2 = [int(v) for v in box]
             detections.append(
                 Detection(
                     label=label,
-                    confidence=float(conf),
+                    confidence=conf,
                     box_xyxy=[x1, y1, x2, y2],
                 )
             )

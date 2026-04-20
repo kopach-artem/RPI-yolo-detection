@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import cv2
 
-from app.config import AppConfig
 from app.types import Detection
 
 
@@ -11,6 +10,7 @@ def annotate_frame(
     detections: list[Detection],
     alert_labels: set[str],
     moving_indexes: set[int] | None = None,
+    confirm_min_frames: int | None = None,
 ):
     annotated = frame.copy()
     moving_indexes = moving_indexes or set()
@@ -25,9 +25,17 @@ def annotate_frame(
 
         if label in alert_labels:
             color = (0, 165, 255)
+
             if idx in moving_indexes:
-                color = (0, 0, 255)
-                text_suffix = " MOVING"
+                if det.is_confirmed:
+                    color = (0, 0, 255)
+                    text_suffix = " MOVING CONFIRMED"
+                elif confirm_min_frames and confirm_min_frames > 1:
+                    color = (0, 140, 255)
+                    text_suffix = f" MOVING {det.confirm_hits}/{confirm_min_frames}"
+                else:
+                    color = (0, 0, 255)
+                    text_suffix = " MOVING"
 
         cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
 
@@ -55,6 +63,7 @@ def draw_status_overlay(
     current_stride: int,
     alert_counts: dict[str, int] | None = None,
     moving_alert_counts: dict[str, int] | None = None,
+    confirmed_alert_counts: dict[str, int] | None = None,
 ):
     annotated = frame
 
@@ -94,10 +103,24 @@ def draw_status_overlay(
         moving_text = ", ".join(f"{k}:{v}" for k, v in sorted(moving_alert_counts.items()))
         cv2.putText(
             annotated,
-            f"MOVING ALERT: {moving_text}",
+            f"MOVING CANDIDATES: {moving_text}",
             (10, 114),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.75,
+            0.70,
+            (0, 140, 255),
+            2,
+        )
+
+    if confirmed_alert_counts:
+        confirmed_text = ", ".join(
+            f"{k}:{v}" for k, v in sorted(confirmed_alert_counts.items())
+        )
+        cv2.putText(
+            annotated,
+            f"CONFIRMED ALERT: {confirmed_text}",
+            (10, 142),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.70,
             (0, 0, 255),
             2,
         )
@@ -138,4 +161,15 @@ def filter_moving_detections(
         det
         for det in detections
         if det.label in alert_labels and det.is_moving
+    ]
+
+
+def filter_confirmed_moving_detections(
+    detections: list[Detection],
+    alert_labels: set[str],
+) -> list[Detection]:
+    return [
+        det
+        for det in detections
+        if det.label in alert_labels and det.is_moving and det.is_confirmed
     ]
