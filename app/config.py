@@ -10,6 +10,7 @@ class AppConfig:
     stream_url: str
     model_name: str
     finetuned_model_name: str
+    top100_rpi_final_model_name: str
 
     save_every: float
     conf: float
@@ -98,13 +99,32 @@ def _parse_class_conf_thresholds(raw: str) -> dict[str, float]:
     return result
 
 
+def _model_path(name: str) -> str:
+    """
+    Put model files under models/ by default.
+    If the user already passed a path, keep it as-is.
+    """
+    name = name.strip()
+    if not name:
+        return name
+
+    model_path = Path(name)
+    if model_path.parent != Path("."):
+        return str(model_path)
+
+    return str(Path("models") / model_path.name)
+
+
 def load_config() -> AppConfig:
     data_root = Path(os.getenv("DATA_ROOT", "/work/data"))
 
     cfg = AppConfig(
         stream_url=os.getenv("STREAM_URL", "http://192.168.0.158:4747/video"),
-        model_name=os.getenv("MODEL_NAME", "yolo26s.pt"),
-        finetuned_model_name=os.getenv("FINETUNED_MODEL_NAME", "best.pt"),
+        model_name=_model_path(os.getenv("MODEL_NAME", "yolo26s.pt")),
+        finetuned_model_name=_model_path(os.getenv("FINETUNED_MODEL_NAME", "best.pt")),
+        top100_rpi_final_model_name=_model_path(
+            os.getenv("TOP100_RPI_FINAL_MODEL_NAME", "yolo26n_top100_rpi_final.pt")
+        ),
 
         save_every=float(os.getenv("SAVE_EVERY", "5")),
         conf=float(os.getenv("CONF", "0.10")),
@@ -158,6 +178,9 @@ def validate_config(cfg: AppConfig) -> None:
 
     if not cfg.finetuned_model_name:
         raise ValueError("FINETUNED_MODEL_NAME must not be empty")
+
+    if not cfg.top100_rpi_final_model_name:
+        raise ValueError("TOP100_RPI_FINAL_MODEL_NAME must not be empty")
 
     if cfg.idle_frame_stride < 1:
         raise ValueError("IDLE_FRAME_STRIDE must be >= 1")
@@ -225,22 +248,23 @@ def choose_run_mode() -> int:
     0 = classic + base
     1 = threshold + base
     2 = classic + finetuned
+    3 = classic + top100_rpi_final
 
     Priority:
-    1. RUN_MODE env var, if set to 0, 1 or 2
+    1. RUN_MODE env var, if set to 0, 1, 2 or 3
     2. Interactive prompt
     """
     env_mode = os.getenv("RUN_MODE", "").strip()
-    if env_mode in {"0", "1", "2"}:
+    if env_mode in {"0", "1", "2", "3"}:
         return int(env_mode)
 
     while True:
         mode = input(
-            "Select run mode [0=classic+base, 1=threshold+base, 2=classic+finetuned]: "
+            "Select run mode [0=classic+base, 1=threshold+base, 2=classic+finetuned, 3=classic+top100_rpi_final]: "
         ).strip()
-        if mode in {"0", "1", "2"}:
+        if mode in {"0", "1", "2", "3"}:
             return int(mode)
-        print("Please enter 0, 1 or 2.")
+        print("Please enter 0, 1, 2 or 3.")
 
 
 def apply_run_mode(cfg: AppConfig, run_mode: int) -> AppConfig:
@@ -249,6 +273,7 @@ def apply_run_mode(cfg: AppConfig, run_mode: int) -> AppConfig:
     0 = classic + base
     1 = threshold + base
     2 = classic + finetuned
+    3 = classic + top100_rpi_final
     """
     if run_mode == 0:
         # Classic behavior + base model
@@ -267,6 +292,17 @@ def apply_run_mode(cfg: AppConfig, run_mode: int) -> AppConfig:
     elif run_mode == 2:
         # Classic behavior + finetuned model
         cfg.model_name = cfg.finetuned_model_name
+        cfg.conf = 0.25
+        cfg.iou = 0.70
+        cfg.augment = False
+        cfg.imgsz = 320
+        cfg.class_conf_thresholds = {}
+        cfg.confirm_min_frames = 1
+        cfg.use_confirm_for_alerts = False
+
+    elif run_mode == 3:
+        # Classic behavior + top100_rpi_final model
+        cfg.model_name = cfg.top100_rpi_final_model_name
         cfg.conf = 0.25
         cfg.iou = 0.70
         cfg.augment = False

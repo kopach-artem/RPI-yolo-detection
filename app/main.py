@@ -158,9 +158,10 @@ def update_fps(state: FrameState, now: float) -> float:
 
 def print_startup_info(cfg, run_mode: int) -> None:
     mode_names = {
-    0: "CLASSIC + BASE",
-    1: "THRESHOLD + BASE",
-    2: "CLASSIC + FINETUNED",
+        0: "CLASSIC + BASE",
+        1: "THRESHOLD + BASE",
+        2: "CLASSIC + FINETUNED",
+        3: "CLASSIC + TOP100 RPI FINAL",
     }
     mode_name = mode_names.get(run_mode, f"UNKNOWN({run_mode})")
 
@@ -188,6 +189,7 @@ def print_startup_info(cfg, run_mode: int) -> None:
     print("Motion box min pixels:", cfg.motion_box_min_pixels)
     print("Motion box min ratio:", cfg.motion_box_min_ratio)
     print("Press Ctrl+C to stop")
+
 
 def main() -> None:
     cfg = load_config()
