@@ -1,0 +1,178 @@
+[
+  {
+    "subset": "core",
+    "run_mode": 0,
+    "model_name": "models/yolo26n.pt",
+    "iou_threshold": 0.5,
+    "summary": {
+      "micro_precision": 0.856815,
+      "micro_recall": 0.475671,
+      "micro_f1": 0.611732,
+      "macro_precision": 0.851367,
+      "macro_recall": 0.525791,
+      "macro_f1": 0.648368,
+      "map50": 0.501166,
+      "total_tp": 5230,
+      "total_fp": 874,
+      "total_fn": 5765
+    },
+    "per_class": [
+      {
+        "class_name": "dog",
+        "gt_count": 218,
+        "pred_count": 149,
+        "tp": 126,
+        "fp": 23,
+        "fn": 92,
+        "precision": 0.845638,
+        "recall": 0.577982,
+        "f1": 0.686649,
+        "ap50": 0.541808
+      },
+      {
+        "class_name": "person",
+        "gt_count": 10777,
+        "pred_count": 5955,
+        "tp": 5104,
+        "fp": 851,
+        "fn": 5673,
+        "precision": 0.857095,
+        "recall": 0.473601,
+        "f1": 0.610088,
+        "ap50": 0.460525
+      }
+    ]
+  },
+  {
+    "subset": "core",
+    "run_mode": 1,
+    "model_name": "models/yolo26n.pt",
+    "iou_threshold": 0.5,
+    "summary": {
+      "micro_precision": 0.920753,
+      "micro_recall": 0.485039,
+      "micro_f1": 0.635373,
+      "macro_precision": 0.900825,
+      "macro_recall": 0.559783,
+      "macro_f1": 0.686176,
+      "map50": 0.54365,
+      "total_tp": 5333,
+      "total_fp": 459,
+      "total_fn": 5662
+    },
+    "per_class": [
+      {
+        "class_name": "dog",
+        "gt_count": 218,
+        "pred_count": 158,
+        "tp": 139,
+        "fp": 19,
+        "fn": 79,
+        "precision": 0.879747,
+        "recall": 0.637615,
+        "f1": 0.739362,
+        "ap50": 0.614646
+      },
+      {
+        "class_name": "person",
+        "gt_count": 10777,
+        "pred_count": 5634,
+        "tp": 5194,
+        "fp": 440,
+        "fn": 5583,
+        "precision": 0.921903,
+        "recall": 0.481952,
+        "f1": 0.63299,
+        "ap50": 0.472653
+      }
+    ]
+  },
+  {
+    "subset": "core",
+    "run_mode": 2,
+    "model_name": "models/yolo26s_finetuned.pt",
+    "iou_threshold": 0.5,
+    "summary": {
+      "micro_precision": 0.747421,
+      "micro_recall": 0.533697,
+      "micro_f1": 0.622732,
+      "macro_precision": 0.534547,
+      "macro_recall": 0.683481,
+      "macro_f1": 0.525707,
+      "map50": 0.566211,
+      "total_tp": 5868,
+      "total_fp": 1983,
+      "total_fn": 5127
+    },
+    "per_class": [
+      {
+        "class_name": "dog",
+        "gt_count": 218,
+        "pred_count": 656,
+        "tp": 183,
+        "fp": 473,
+        "fn": 35,
+        "precision": 0.278963,
+        "recall": 0.83945,
+        "f1": 0.418764,
+        "ap50": 0.628355
+      },
+      {
+        "class_name": "person",
+        "gt_count": 10777,
+        "pred_count": 7195,
+        "tp": 5685,
+        "fp": 1510,
+        "fn": 5092,
+        "precision": 0.790132,
+        "recall": 0.527512,
+        "f1": 0.632651,
+        "ap50": 0.504067
+      }
+    ]
+  },
+  {
+    "subset": "core",
+    "run_mode": 3,
+    "model_name": "models/yolo26n_top100_rpi_final.pt",
+    "iou_threshold": 0.5,
+    "summary": {
+      "micro_precision": 0.7788,
+      "micro_recall": 0.16171,
+      "micro_f1": 0.267811,
+      "macro_precision": 0.690775,
+      "macro_recall": 0.291478,
+      "macro_f1": 0.377941,
+      "map50": 0.250933,
+      "total_tp": 1778,
+      "total_fp": 505,
+      "total_fn": 9217
+    },
+    "per_class": [
+      {
+        "class_name": "dog",
+        "gt_count": 218,
+        "pred_count": 158,
+        "tp": 93,
+        "fp": 65,
+        "fn": 125,
+        "precision": 0.588608,
+        "recall": 0.426606,
+        "f1": 0.494681,
+        "ap50": 0.361037
+      },
+      {
+        "class_name": "person",
+        "gt_count": 10777,
+        "pred_count": 2125,
+        "tp": 1685,
+        "fp": 440,
+        "fn": 9092,
+        "precision": 0.792941,
+        "recall": 0.156351,
+        "f1": 0.2612,
+        "ap50": 0.140828
+      }
+    ]
+  }
+]

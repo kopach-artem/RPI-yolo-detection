@@ -44,4 +44,5 @@ docker run --rm -it --ipc=host \
   -v "$PWD:/work" \
   -w /work \
   "$IMAGE_NAME" \
-  python -m app.main
+  bash -lc "python -m eval.run_images_eval --subset wide  && python -m eval.metrics --subset wide && python -m eval.plots --subset wide"
+

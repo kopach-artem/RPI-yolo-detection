@@ -1,0 +1,44 @@
+{
+  "subset": "core",
+  "run_mode": 1,
+  "model_name": "models/yolo26n.pt",
+  "iou_threshold": 0.5,
+  "summary": {
+    "micro_precision": 0.920753,
+    "micro_recall": 0.485039,
+    "micro_f1": 0.635373,
+    "macro_precision": 0.900825,
+    "macro_recall": 0.559783,
+    "macro_f1": 0.686176,
+    "map50": 0.54365,
+    "total_tp": 5333,
+    "total_fp": 459,
+    "total_fn": 5662
+  },
+  "per_class": [
+    {
+      "class_name": "dog",
+      "gt_count": 218,
+      "pred_count": 158,
+      "tp": 139,
+      "fp": 19,
+      "fn": 79,
+      "precision": 0.879747,
+      "recall": 0.637615,
+      "f1": 0.739362,
+      "ap50": 0.614646
+    },
+    {
+      "class_name": "person",
+      "gt_count": 10777,
+      "pred_count": 5634,
+      "tp": 5194,
+      "fp": 440,
+      "fn": 5583,
+      "precision": 0.921903,
+      "recall": 0.481952,
+      "f1": 0.63299,
+      "ap50": 0.472653
+    }
+  ]
+}

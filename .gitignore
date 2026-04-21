@@ -3,3 +3,4 @@ Dockerfile
 .env
 yolo26n.pt
 yolo26s.pt
+/eval_data/

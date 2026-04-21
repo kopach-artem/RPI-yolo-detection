@@ -1,0 +1,11 @@
+mode=0 model=models/yolo26n.pt
+  micro_precision=0.8142 micro_recall=0.3710 micro_f1=0.5097 map50=0.3115
+  TP=7027 FP=1604 FN=11913
+
+mode=1 model=models/yolo26n.pt
+  micro_precision=0.8567 micro_recall=0.3982 micro_f1=0.5437 map50=0.3612
+  TP=7541 FP=1261 FN=11399
+
+mode=3 model=models/yolo26n_top100_rpi_final.pt
+  micro_precision=0.7326 micro_recall=0.1283 micro_f1=0.2184 map50=0.0984
+  TP=2430 FP=887 FN=16510

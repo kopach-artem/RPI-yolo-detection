@@ -15,6 +15,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN python -m pip install --upgrade pip setuptools wheel
 RUN python -m pip install torch==2.3.1 torchvision==0.18.1
-RUN python -m pip install ultralytics flask requests
+RUN python -m pip install ultralytics flask requests opencv-python matplotlib
 
 CMD ["bash"]
