@@ -26,69 +26,7 @@ YOLO-based live object detection for a DroidCam stream on Raspberry Pi 4 with:
 
 ## First setup
 
-Clone the repository:
-
-```bash
-git clone <REPO_URL>
-cd <REPO_FOLDER>
-```
-
-Make scripts executable:
-
-```bash
-chmod +x install_docker_debian.sh start.sh
-```
-
-Install Docker:
-
-```bash
-./install_docker_debian.sh
-newgrp docker
-docker run hello-world
-```
-
-## Configuration
-
-Create your local config file:
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-Set at least these values:
-
-* `STREAM_URL`
-* `TELEGRAM_BOT_TOKEN`
-* `TELEGRAM_CHAT_ID`
-
-## Run
-
-Start the project:
-
-```bash
-./start.sh
-```
-
-Behavior:
-
-* if the Docker image does not exist, it is built automatically
-* if the Docker image already exists, the app starts immediately
-
-## Open the stream
-
-Open in your browser:
-
-```text
-http://<RASPBERRY_PI_IP>:8080
-```
-
-## Runtime data
-
-The application writes runtime artifacts to:
-
-```text
-data/shots/
+TODO 
 data/json/
 data/alerts/
 ```
